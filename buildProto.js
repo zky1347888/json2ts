@@ -1,11 +1,12 @@
 let json2ts = require("json2ts");
 let fs = require('fs');
-var path = require('path');
+let path = require('path');
+let readline = require('readline');
 
 toUpperFirstLetter = function (text) {
     return text.charAt(0).toUpperCase() + text.slice(1);
 };
-console.log(__dirname)
+//console.log(__dirname)
 
 var filePath = path.resolve('../protocols/');
 
@@ -28,14 +29,32 @@ function fileDisplay(filePath){
                     }else{
                         var isFile = stats.isFile();//是文件
                         var isDir = stats.isDirectory();//是文件夹
+
                         if(isFile){
-                          console.log("###filedir = ", filedir);
-                          var proto = fs.readFileSync(filedir, "utf8");
-                          let protoJson = JSON.parse(proto);
-                          let rootObjectName = toUpperFirstLetter(protoJson.cmd);
-                          console.log("cmd = ", toUpperFirstLetter(protoJson.cmd));
-                          let result = json2ts.convert(JSON.stringify(protoJson), rootObjectName+"Message")
-                          fs.writeFileSync('../netMessage/' + rootObjectName + "Message" + '.ts', result);
+                          console.log(filedir);
+
+                          let proto = "";
+                          let input = fs.createReadStream(filedir, "utf8")
+                          const rl = readline.createInterface({
+                            input: input
+                          });
+
+                          //按行读取文件 异步
+                          rl.on('line', (line) => {
+                            //去掉 //后的内容
+                            var n = line.indexOf('//');
+                            line = line.substring(0, n != -1 ? n : line.length);
+                            proto = proto + line;
+                   
+                          });
+
+                          //按行读取文件结束
+                          rl.on('close', (line) => {
+                            let protoJson = JSON.parse(proto);
+                            let rootObjectName = toUpperFirstLetter(protoJson.cmd);
+                            let result = json2ts.convert(JSON.stringify(protoJson), rootObjectName+"Message")
+                            fs.writeFileSync('../netMessage/' + rootObjectName + "Message" + '.ts', result);
+                          });
                   
                         }
                         // if(isDir){
@@ -48,11 +67,10 @@ function fileDisplay(filePath){
     });
 }
 
-console.log("########");
-
-// var proto = fs.readFileSync('../protocols/roomInfo.proto', "utf8");
+// 文件直接读取
+// var proto = fs.readFileSync(filedir, "utf8");
 // let protoJson = JSON.parse(proto);
 // let rootObjectName = toUpperFirstLetter(protoJson.cmd);
 // console.log("cmd = ", toUpperFirstLetter(protoJson.cmd));
-// let result = json2ts.convert(JSON.stringify(protoJson), rootObjectName+"Root")
-// fs.writeFileSync('./' + toUpperFirstLetter(protoJson.cmd) + '.ts', result);
+// let result = json2ts.convert(JSON.stringify(protoJson), rootObjectName+"Message")
+// fs.writeFileSync('../netMessage/' + rootObjectName + "Message" + '.ts', result);
