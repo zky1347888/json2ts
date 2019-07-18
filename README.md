@@ -24,18 +24,19 @@ npm test
 ```
 
 ## 解析json 生成 *.ts class文件
+使用：
+   *  npm install json2ts
+   *  json2ts.js重写过 替换npm包中的 json2ts.js 文件
+   *  添加 buildProto.js 
+
+   * proto 文件支持注释
    * json2ts.js 文件已经被更新
    * node buildProto.js 生成协议文件
-   
-
-   *  npm install json2ts
-   *  替换 json2ts.js 文件
-   *  添加 buildProto.js 
 
 ```
 {
-	"uid": "25299219",
-	"prepared": 1,
+	"uid": "25299219", 
+	"prepared": 1, // 是否准备 0没准备 1准备
 	"owner": 0,
 	"master": 1,
 	"viceMoney": 25,
@@ -45,7 +46,7 @@ npm test
 		"icon": 0,
 		"sex": 0
 	},
-	"positions": [12,23],
+	"positions": [12,23], //位置信息
 	"users": [
 		{"name": "xxx", "age":12},
 		{"name": "xxx", "age":12}
