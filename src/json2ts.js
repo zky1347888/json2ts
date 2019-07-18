@@ -2,23 +2,26 @@ var _ = require("underscore");
 var Json2Ts = (function () {
     function Json2Ts() {
     }
-    Json2Ts.prototype.convert = function (content) {
+    Json2Ts.prototype.convert = function (content, objectName) {
         var jsonContent = JSON.parse(content);
         if (_.isArray(jsonContent)) {
-            return this.convertObjectToTsInterfaces(jsonContent[0]);
+            return this.convertObjectToTsInterfaces(jsonContent[0], objectName);
         }
-        return this.convertObjectToTsInterfaces(jsonContent);
+        return this.convertObjectToTsInterfaces(jsonContent, objectName);
     };
     Json2Ts.prototype.convertObjectToTsInterfaces = function (jsonContent, objectName) {
         if (objectName === void 0) { objectName = "RootObject"; }
         var optionalKeys = [];
         var objectResult = [];
+        var constructor = [];
         for (var key in jsonContent) {
             var value = jsonContent[key];
             if (_.isObject(value) && !_.isArray(value)) {
                 var childObjectName = this.toUpperFirstLetter(key);
                 objectResult.push(this.convertObjectToTsInterfaces(value, childObjectName));
                 jsonContent[key] = this.removeMajority(childObjectName) + ";";
+
+                this.constructorAddObject(constructor, childObjectName, key);
             }
             else if (_.isArray(value)) {
                 var arrayTypes = this.detectMultiArrayTypes(value);
@@ -26,41 +29,89 @@ var Json2Ts = (function () {
                     var multiArrayBrackets = this.getMultiArrayBrackets(value);
                     if (this.isAllEqual(arrayTypes)) {
                         jsonContent[key] = arrayTypes[0].replace("[]", multiArrayBrackets);
+
+                        this.constructorAddArray(constructor, key);
                     }
                     else {
                         jsonContent[key] = "any" + multiArrayBrackets + ";";
+
+                        this.constructorAddArray(constructor, key);
                     }
                 }
                 else if (value.length > 0 && _.isObject(value[0])) {
                     var childObjectName = this.toUpperFirstLetter(key);
                     objectResult.push(this.convertObjectToTsInterfaces(value[0], childObjectName));
                     jsonContent[key] = this.removeMajority(childObjectName) + "[];";
+
+                    this.constructorAddArrayObject(constructor, childObjectName, key);
                 }
                 else {
                     jsonContent[key] = arrayTypes[0];
+
+                    this.constructorAddArray(constructor, key);
                 }
             }
             else if (_.isDate(value)) {
                 jsonContent[key] = "Date;";
+                
+                this.constructorAddBaseType(constructor, key);
             }
             else if (_.isString(value)) {
                 jsonContent[key] = "string;";
+                
+                this.constructorAddBaseType(constructor, key);
             }
             else if (_.isBoolean(value)) {
                 jsonContent[key] = "boolean;";
+                
+                this.constructorAddBaseType(constructor, key);
             }
             else if (_.isNumber(value)) {
                 jsonContent[key] = "number;";
+                
+                this.constructorAddBaseType(constructor, key);
             }
             else {
                 jsonContent[key] = "any;";
                 optionalKeys.push(key);
+
+                this.constructorAddBaseType(constructor, key);
             }
         }
+        jsonContent["constructor(data: any)"] = constructor;
+       
         var result = this.formatCharsToTypeScript(jsonContent, objectName, optionalKeys);
         objectResult.push(result);
         return objectResult.join("\n\n");
     };
+
+    Json2Ts.prototype.constructorAddBaseType = function (constructor, key){
+        constructor.push("this." + key + " = data." + key + ";");
+    };
+
+    Json2Ts.prototype.constructorAddObject = function (constructor, childObjectName, key){
+        constructor.push("if (data." + key + ") {");
+        constructor.push("    this." + key + " = new " + childObjectName + "(data." + key + ");");
+        constructor.push("}");
+    };
+
+    Json2Ts.prototype.constructorAddArray = function (constructor, key){
+        constructor.push("this." + key + " = [];");
+        constructor.push("for (let i = 0; i < data." + key + ".length; i++) {");
+        constructor.push("    this." + key +"[i] = data." + key + "[i];"  );
+        constructor.push("}");
+    };
+
+    Json2Ts.prototype.constructorAddArrayObject = function (constructor, childObjectName, key){
+        constructor.push("this." + key + " = [];");
+        constructor.push("for (let i = 0; i < data." + key + ".length; i++) {");
+        //constructor.push("    if (data." + key + ")");
+        constructor.push("    this." + key + "[i] = new " + this.removeMajority(childObjectName) + "(data." + key + "[i]);");
+        //constructor.push("    else");
+        //constructor.push("        this." + key + "[i] = undefined;");
+        constructor.push("}"  );
+    };
+
     Json2Ts.prototype.detectMultiArrayTypes = function (value, valueType) {
         if (valueType === void 0) { valueType = []; }
         if (_.isArray(value)) {
@@ -109,6 +160,13 @@ var Json2Ts = (function () {
         }
         return brackets;
     };
+
+
+    Json2Ts.prototype.replacepos = function (text,start,stop,replacetext){
+            let newText = text.substring(0,stop-1)+replacetext+text.substring(stop+1);
+            return newText;
+    };
+
     Json2Ts.prototype.formatCharsToTypeScript = function (jsonContent, objectName, optionalKeys) {
         var result = JSON.stringify(jsonContent, null, "\t")
             .replace(new RegExp("\"", "g"), "")
@@ -116,6 +174,7 @@ var Json2Ts = (function () {
         var allKeys = _.allKeys(jsonContent);
         for (var index = 0, length_3 = allKeys.length; index < length_3; index++) {
             var key = allKeys[index];
+           
             if (_.contains(optionalKeys, key)) {
                 result = result.replace(new RegExp(key + ":", "g"), this.toLowerFirstLetter(key) + "?:");
             }
@@ -123,9 +182,16 @@ var Json2Ts = (function () {
                 result = result.replace(new RegExp(key + ":", "g"), this.toLowerFirstLetter(key) + ":");
             }
         }
+
+        result = result.replace("constructor(data: any): [", 'constructor(data: any) {');
+        let indexOf = result.lastIndexOf("]");
+        result = this.replacepos(result, indexOf, indexOf+1, "}\n");
+
         objectName = this.removeMajority(objectName);
-        return "export interface " + objectName + " " + result;
+       
+        return "export class " + objectName + " " + result;
     };
+
     Json2Ts.prototype.removeMajority = function (objectName) {
         if (_.last(objectName, 3).join("").toUpperCase() === "IES") {
             return objectName.substring(0, objectName.length - 3) + "y";
