@@ -17,13 +17,6 @@ let result = json2ts.convert(jsonContent);
 
 ```
 
-## As IDE Extension
-
-This module is used as IDE Extension for [Visual Studio Code](https://github.com/GregorBiswanger/VSCode-json2ts) and [Brackets](https://github.com/GregorBiswanger/Brackets-json2ts).
-
-![json2ts Screenshot](https://github.com/GregorBiswanger/VSCode-json2ts/blob/master/images/json2ts.gif?raw=true)
-
-
 ## Tests
 
 ```
@@ -35,9 +28,9 @@ npm test
    * node buildProto.js 生成协议文件
    
 
-   npm install json2ts
-   替换 json2ts.js 文件
-   添加 buildProto.js 
+   *  npm install json2ts
+   *  替换 json2ts.js 文件
+   *  添加 buildProto.js 
 
 ```
 {
