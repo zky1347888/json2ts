@@ -31,8 +31,9 @@ npm test
 ```
 
 ## 解析json 生成 *.ts class文件
-   json2ts.js 文件已经被更新
-   node buildProto.js 生成协议文件
+   * json2ts.js 文件已经被更新
+   * node buildProto.js 生成协议文件
+   
 
    npm install json2ts
    替换 json2ts.js 文件
